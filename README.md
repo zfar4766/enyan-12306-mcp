@@ -10,8 +10,7 @@
 ![](https://img.shields.io/github/license/Joooook/12306-mcp.svg?style=flat-square&color=000000)
 </div>
 
-- [English](README_en.md)
-- [Zh](README.md)
+
 ## <div align="center">👋Introduction</div>
 This is a 12306 ticket search server based on the Model Context Protocol (MCP). The server provides a simple API interface that allows users to search for 12306 tickets.
 

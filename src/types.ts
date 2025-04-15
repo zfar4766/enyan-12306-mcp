@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 export type TicketData = {
     secret_Sstr: string;
     button_text_info: string;
