@@ -21,10 +21,10 @@ This is a 12306 ticket search server based on the Model Context Protocol (MCP). 
 - 查询12306购票信息
 - 过滤列车信息
 <div align="center"> 
-  <img src="imgs/img1.png" width=800px/>
+  <img src="https://s2.loli.net/2025/04/15/UjbrG5esaSEmJxN.jpg" width=800px/>
 </div>
 <div align="center"> 
-  <img src="imgs/img2.png" width=800px/>
+  <img src="https://s2.loli.net/2025/04/15/rm1j8zX7sqiyafP.jpg" width=800px/>
 </div>
 
 ## <div align="center">⚙️Installation</div>
