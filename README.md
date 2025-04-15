@@ -49,9 +49,10 @@ node ./build/index.js
 {
     "mcpServers": {
         "12306-mcp": {
-            "command": "node",
+            "command": "npx",
             "args": [
-                "/ABSOLUTE/PATH/TO/PARENT/FOLDER/12306-mcp/build/index.js"
+                "-y",
+                "12306-mcp"
             ]
         }
     }
