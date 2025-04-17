@@ -1,6 +1,6 @@
 {
   "name": "12306-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
@@ -25,7 +25,6 @@
     "12306-mcp": "./build/index.js"
   },
   "files": [
-    "build",
-    "imgs"
+    "build"
   ]
 }
