@@ -22,6 +22,8 @@ A 12306 ticket search server based on the Model Context Protocol (MCP). The serv
 
 - 查询12306购票信息
 - 过滤列车信息
+- 过站查询
+
 <div align="center"> 
   <img src="https://s2.loli.net/2025/04/15/UjbrG5esaSEmJxN.jpg" width=800px/>
 </div>
@@ -65,7 +67,7 @@ node ./build/index.js
 
 
 ## <div align="center">✅Todo</div>
-- 完成12306其余接口（中转，过站查询...）。
+- 完成12306其余接口（中转...）。
 
 ## <div align="center">👉️Reference</div>
 - [modelcontextprotocol/modelcontextprotocol](https://github.com/modelcontextprotocol/modelcontextprotocol)
