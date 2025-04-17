@@ -74,11 +74,14 @@ export const TicketDataKeys: (keyof TicketData)[] = [
 
 export type TicketInfo = {
     train_no: string;
+    start_train_code: string;
     start_time: string;
     arrive_time: string;
     lishi: string;
     from_station: string;
     to_station: string;
+    from_station_telecode: string;
+    to_station_telecode: string;
     prices: Price[];
     dw_flag: string[];
 }
@@ -110,3 +113,26 @@ export interface Price {
 }
 
 
+export type RouteStationData = {
+    arrive_time: string,
+    station_name: string,
+    isChina: string,
+    start_time: string,
+    stopover_time: string,
+    station_no: string,
+    country_code: string,
+    country_name: string,
+    isEnabled: boolean
+    train_class_name?: string
+    service_type?: string
+    end_station_name?: string
+    start_station_name?: string
+    station_train_code?: string
+}
+
+export type RouteStationInfo = {
+    arrive_time: string,
+    station_name: string,
+    stopover_time: string,
+    station_no: number,
+}

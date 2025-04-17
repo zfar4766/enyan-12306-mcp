@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Data一般用于表示从服务器上请求到的数据，Info一般表示解析并筛选过的要传输给大模型的数据。变量使用驼峰命名，常量使用全大写下划线命名。
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import axios from 'axios';
@@ -158,6 +159,35 @@ async function getCookie(url) {
         return null;
     }
 }
+function parseRouteStationsData(rawData) {
+    const result = [];
+    for (const item of rawData) {
+        result.push(item);
+    }
+    return result;
+}
+function parseRouteStationsInfo(routeStationsData) {
+    const result = [];
+    routeStationsData.forEach((routeStationData, index) => {
+        if (index == 0) {
+            result.push({
+                arrive_time: routeStationData.start_time,
+                station_name: routeStationData.station_name,
+                stopover_time: routeStationData.stopover_time,
+                station_no: parseInt(routeStationData.station_no),
+            });
+        }
+        else {
+            result.push({
+                arrive_time: routeStationData.arrive_time,
+                station_name: routeStationData.station_name,
+                stopover_time: routeStationData.stopover_time,
+                station_no: parseInt(routeStationData.station_no),
+            });
+        }
+    });
+    return result;
+}
 function parseTicketsData(rawData) {
     const result = [];
     for (const item of rawData) {
@@ -176,12 +206,15 @@ function parseTicketsInfo(ticketsData) {
         const prices = extractPrices(ticket);
         const dw_flag = extractDWFlags(ticket);
         result.push({
-            train_no: ticket.station_train_code,
+            train_no: ticket.train_no,
+            start_train_code: ticket.station_train_code,
             start_time: ticket.start_time,
             arrive_time: ticket.arrive_time,
             lishi: ticket.lishi,
             from_station: STATIONS[ticket.from_station_telecode].station_name,
             to_station: STATIONS[ticket.to_station_telecode].station_name,
+            from_station_telecode: ticket.from_station_telecode,
+            to_station_telecode: ticket.to_station_telecode,
             prices: prices,
             dw_flag: dw_flag,
         });
@@ -192,7 +225,7 @@ function formatTicketsInfo(ticketsInfo) {
     let result = '';
     ticketsInfo.forEach((ticketInfo) => {
         let infoStr = '';
-        infoStr += `${ticketInfo.train_no} ${ticketInfo.from_station} -> ${ticketInfo.to_station} ${ticketInfo.start_time} -> ${ticketInfo.arrive_time} 历时：${ticketInfo.lishi}`;
+        infoStr += `${ticketInfo.start_train_code}(实际车次train_no: ${ticketInfo.train_no}) ${ticketInfo.from_station}(telecode: ${ticketInfo.from_station_telecode}) -> ${ticketInfo.to_station}(telecode: ${ticketInfo.to_station_telecode}) ${ticketInfo.start_time} -> ${ticketInfo.arrive_time} 历时：${ticketInfo.lishi}`;
         ticketInfo.prices.forEach((price) => {
             infoStr += `\n- ${price.seat_name}: ${price.num.match(/^\d+$/) ? price.num + '张' : price.num}剩余 ${price.price}元`;
         });
@@ -346,7 +379,7 @@ server.tool('get-stations-code-in-city', '通过城市名查询该城市所有�
 server.tool('get-station-code-of-city', '通过城市名查询该城市对应的station_code', {
     city: z.string().describe('中文城市名称'),
 }, async ({ city }) => {
-    if (!(city in CITY_STATIONS)) {
+    if (!(city in CITY_CODES)) {
         return {
             content: [
                 {
@@ -360,18 +393,18 @@ server.tool('get-station-code-of-city', '通过城市名查询该城市对应的
         content: [
             {
                 type: 'text',
-                text: JSON.stringify(CITY_STATIONS[city]),
+                text: JSON.stringify(CITY_CODES[city]),
             },
         ],
     };
 });
 server.tool('get-station-code-by-name', '通过车站名查询station_code', {
-    station_name: z.string().describe('中文车站名称'),
-}, async ({ station_name }) => {
-    station_name = station_name.endsWith('站')
-        ? station_name.substring(0, -1)
-        : station_name;
-    if (!(station_name in NAME_STATIONS)) {
+    stationName: z.string().describe('中文车站名称'),
+}, async ({ stationName }) => {
+    stationName = stationName.endsWith('站')
+        ? stationName.substring(0, -1)
+        : stationName;
+    if (!(stationName in NAME_STATIONS)) {
         return {
             content: [
                 {
@@ -385,32 +418,32 @@ server.tool('get-station-code-by-name', '通过车站名查询station_code', {
         content: [
             {
                 type: 'text',
-                text: JSON.stringify(NAME_STATIONS[station_name]),
+                text: JSON.stringify(NAME_STATIONS[stationName]),
             },
         ],
     };
 });
 server.tool('get-tickets', '查询12306余票信息。', {
     date: z.string().length(10).describe('日期( 格式: yyyy-mm-dd )'),
-    from_station: z
+    fromStation: z
         .string()
         .describe('出发车站的station_code 或 出发城市的station_code'),
-    to_station: z
+    toStation: z
         .string()
         .describe('到达车站的station_code 或 出发城市的station_code'),
-    train_filter_flags: z
+    trainFilterFlags: z
         .string()
         .regex(/^[GDZTKOFS]*$/)
         .max(8)
         .optional()
         .default('')
         .describe('车次筛选条件，默认为空。从以下标志中选取多个条件组合[G(高铁/城际),D(动车),Z(直达特快),T(特快),K(快速),O(其他),F(复兴号),S(智能动车组)]'),
-}, async ({ date, from_station, to_station, train_filter_flags }) => {
+}, async ({ date, fromStation, toStation, trainFilterFlags }) => {
     const queryParams = new URLSearchParams({
         'leftTicketDTO.train_date': date,
-        'leftTicketDTO.from_station': from_station,
-        'leftTicketDTO.to_station': to_station,
-        purpose_codes: 'ADULT',
+        'leftTicketDTO.from_station': fromStation,
+        'leftTicketDTO.to_station': toStation,
+        'purpose_codes': 'ADULT',
     });
     const queryUrl = `${API_BASE}/otn/leftTicket/query`;
     const cookies = await getCookie(API_BASE);
@@ -437,12 +470,62 @@ server.tool('get-tickets', '查询12306余票信息。', {
     }
     const ticketsData = parseTicketsData(queryResponse.data.result);
     const ticketsInfo = parseTicketsInfo(ticketsData);
-    const filteredTicketsInfo = filterTicketsInfo(ticketsInfo, train_filter_flags);
+    const filteredTicketsInfo = filterTicketsInfo(ticketsInfo, trainFilterFlags);
     return {
         content: [
             {
                 type: 'text',
                 text: formatTicketsInfo(filteredTicketsInfo),
+            },
+        ],
+    };
+});
+server.tool('get-train-route-stations', '查询列车途径车站信息。', {
+    trainNo: z.string().describe('实际车次编号train_no，例如240000G10336.'),
+    fromStationTelecode: z
+        .string()
+        .describe('出发车站的station_telecode_code，而非城市的station_code.'),
+    toStationTelecode: z
+        .string()
+        .describe('到达车站的station_telecode_code，而非城市的station_code.'),
+    departDate: z.string().length(10).describe('列车出发日期( 格式: yyyy-mm-dd )'),
+}, async ({ trainNo: trainNo, fromStationTelecode, toStationTelecode, departDate }) => {
+    const queryParams = new URLSearchParams({
+        'train_no': trainNo,
+        'from_station_telecode': fromStationTelecode,
+        'to_station_telecode': toStationTelecode,
+        'depart_date': departDate,
+    });
+    const queryUrl = `${API_BASE}/otn/czxx/queryByTrainNo`;
+    const cookies = await getCookie(API_BASE);
+    if (cookies == null) {
+        return {
+            content: [
+                {
+                    type: 'text',
+                    text: 'Error: get cookie failed. ',
+                },
+            ],
+        };
+    }
+    const queryResponse = await make12306Request(queryUrl, queryParams, { Cookie: formatCookies(cookies) });
+    if (queryResponse == null) {
+        return {
+            content: [
+                {
+                    type: 'text',
+                    text: 'Error: get train route stations failed. ',
+                },
+            ],
+        };
+    }
+    const routeStationsData = parseRouteStationsData(queryResponse.data.data);
+    const routeStationsInfo = parseRouteStationsInfo(routeStationsData);
+    return {
+        content: [
+            {
+                type: 'text',
+                text: JSON.stringify(routeStationsInfo),
             },
         ],
     };
