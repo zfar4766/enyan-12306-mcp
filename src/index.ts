@@ -18,7 +18,7 @@ import {
 
 const API_BASE = 'https://kyfw.12306.cn';
 const WEB_URL = 'https://www.12306.cn/index/';
-const STATIONS: Record<string, StationData> = await getStations();
+const STATIONS: Record<string, StationData> = await getStations(); //以Code为键
 const CITY_STATIONS: Record<
   string,
   { station_code: string; station_name: string }[]
@@ -260,7 +260,10 @@ function parseTicketsInfo(ticketsData: TicketData[]): TicketInfo[] {
 }
 
 function formatTicketsInfo(ticketsInfo: TicketInfo[]): string {
-  let result = '';
+  if (ticketsInfo.length === 0) {
+    return '没有查询到相关车次信息';
+  }
+  let result = '车次 | 出发站 -> 到达站 | 出发时间 -> 到达时间 | 历时 |';
   ticketsInfo.forEach((ticketInfo) => {
     let infoStr = '';
     infoStr += `${ticketInfo.start_train_code}(实际车次train_no: ${ticketInfo.train_no}) ${ticketInfo.from_station}(telecode: ${ticketInfo.from_station_telecode}) -> ${ticketInfo.to_station}(telecode: ${ticketInfo.to_station_telecode}) ${ticketInfo.start_time} -> ${ticketInfo.arrive_time} 历时：${ticketInfo.lishi}`;
@@ -537,6 +540,29 @@ server.tool(
       ),
   },
   async ({ date, fromStation, toStation, trainFilterFlags }) => {
+    // 检查日期是否早于当前日期
+    if (new Date(date).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)){
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Error: The date cannot be earlier than today.',
+          },
+        ],
+      };
+    }
+    console.error(fromStation, toStation);
+    console.error(Object.keys(STATIONS));
+    if (!Object.keys(STATIONS).includes(fromStation) || !Object.keys(STATIONS).includes(toStation)){
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Error: Station not found. ',
+          },
+        ],
+      };
+    }
     const queryParams = new URLSearchParams({
       'leftTicketDTO.train_date': date,
       'leftTicketDTO.from_station': fromStation,
@@ -550,7 +576,7 @@ server.tool(
         content: [
           {
             type: 'text',
-            text: 'Error: get cookie failed. ',
+            text: 'Error: get cookie failed. Check your network.',
           },
         ],
       };
@@ -560,7 +586,7 @@ server.tool(
       queryParams,
       { Cookie: formatCookies(cookies) }
     );
-    if (queryResponse == null) {
+    if (queryResponse === null || queryResponse === undefined) {
       return {
         content: [
           {
