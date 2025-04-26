@@ -551,8 +551,6 @@ server.tool(
         ],
       };
     }
-    console.error(fromStation, toStation);
-    console.error(Object.keys(STATIONS));
     if (!Object.keys(STATIONS).includes(fromStation) || !Object.keys(STATIONS).includes(toStation)){
       return {
         content: [
