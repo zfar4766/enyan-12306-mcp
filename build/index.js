@@ -453,8 +453,6 @@ server.tool('get-tickets', '查询12306余票信息。', {
             ],
         };
     }
-    console.error(fromStation, toStation);
-    console.error(Object.keys(STATIONS));
     if (!Object.keys(STATIONS).includes(fromStation) || !Object.keys(STATIONS).includes(toStation)) {
         return {
             content: [
