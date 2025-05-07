@@ -7,6 +7,20 @@ import { z } from 'zod';
 import { StationDataKeys, TicketDataKeys, } from './types.js';
 const API_BASE = 'https://kyfw.12306.cn';
 const WEB_URL = 'https://www.12306.cn/index/';
+const MISSING_STATIONS = [
+    {
+        station_id: '@cdd',
+        station_name: '成  都东',
+        station_code: 'WEI',
+        station_pinyin: 'chengdudong',
+        station_short: 'cdd',
+        station_index: '',
+        code: '1707',
+        city: '成都',
+        r1: '',
+        r2: '',
+    },
+];
 const STATIONS = await getStations(); //以Code为键
 const CITY_STATIONS = (() => {
     const result = {};
@@ -282,7 +296,7 @@ function extractPrices(ticketData) {
         const discount_str = seat_discount_info.slice(i * DISCOUNT_STR_LENGTH, (i + 1) * DISCOUNT_STR_LENGTH);
         discounts[discount_str[0]] = parseInt(discount_str.slice(1), 10);
     }
-    const exList = yp_ex.split('0').filter(Boolean); // Remove empty strings
+    const exList = yp_ex.split(/[01]/).filter(Boolean); // Remove empty strings
     exList.forEach((ex, index) => {
         const seat_type = SEAT_TYPES[ex];
         const price_str = yp_info_new.slice(index * PRICE_STR_LENGTH, (index + 1) * PRICE_STR_LENGTH);
@@ -350,58 +364,33 @@ const server = new McpServer({
     instructions: 'This server provides information about 12306.You can use this server to query train tickets on 12306.',
 });
 server.resource('stations', 'data://all-stations', async (uri) => ({
-    contents: [
-        {
-            uri: uri.href,
-            text: JSON.stringify(STATIONS),
-        },
-    ],
+    contents: [{ uri: uri.href, text: JSON.stringify(STATIONS) }],
 }));
-server.tool('get-stations-code-in-city', '通过城市名查询该城市所有车站的station_code', {
+server.tool('get-stations-code-in-city', '通过城市名查询该城市所有车站的station_code，结果为列表。', {
     city: z.string().describe('中文城市名称'),
 }, async ({ city }) => {
     if (!(city in CITY_STATIONS)) {
         return {
-            content: [
-                {
-                    type: 'text',
-                    text: 'Error: City not found. ',
-                },
-            ],
+            content: [{ type: 'text', text: 'Error: City not found. ' }],
         };
     }
     return {
-        content: [
-            {
-                type: 'text',
-                text: JSON.stringify(CITY_STATIONS[city]),
-            },
-        ],
+        content: [{ type: 'text', text: JSON.stringify(CITY_STATIONS[city]) }],
     };
 });
-server.tool('get-station-code-of-city', '通过城市名查询该城市对应的station_code', {
+server.tool('get-station-code-of-city', '通过城市名查询该城市对应的station_code，结果是唯一的。', {
     city: z.string().describe('中文城市名称'),
 }, async ({ city }) => {
     if (!(city in CITY_CODES)) {
         return {
-            content: [
-                {
-                    type: 'text',
-                    text: 'Error: City not found. ',
-                },
-            ],
+            content: [{ type: 'text', text: 'Error: City not found. ' }],
         };
     }
     return {
-        content: [
-            {
-                type: 'text',
-                text: JSON.stringify(CITY_CODES[city]),
-            },
-        ],
+        content: [{ type: 'text', text: JSON.stringify(CITY_CODES[city]) }],
     };
 });
-server.tool('get-station-code-by-name', '通过车站名查询station_code', {
+server.tool('get-station-code-by-name', '通过车站名查询station_code，结果是唯一的。', {
     stationName: z.string().describe('中文车站名称'),
 }, async ({ stationName }) => {
     stationName = stationName.endsWith('站')
@@ -409,20 +398,26 @@ server.tool('get-station-code-by-name', '通过车站名查询station_code', {
         : stationName;
     if (!(stationName in NAME_STATIONS)) {
         return {
-            content: [
-                {
-                    type: 'text',
-                    text: 'Error: Station not found. ',
-                },
-            ],
+            content: [{ type: 'text', text: 'Error: Station not found. ' }],
         };
     }
     return {
         content: [
-            {
-                type: 'text',
-                text: JSON.stringify(NAME_STATIONS[stationName]),
-            },
+            { type: 'text', text: JSON.stringify(NAME_STATIONS[stationName]) },
+        ],
+    };
+});
+server.tool('get-station-by-telecode', '通过station_telecode查询车站信息，结果是唯一的。', {
+    stationTelecode: z.string().describe('车站的station_telecode'),
+}, async ({ stationTelecode }) => {
+    if (!STATIONS[stationTelecode]) {
+        return {
+            content: [{ type: 'text', text: 'Error: Station not found. ' }],
+        };
+    }
+    return {
+        content: [
+            { type: 'text', text: JSON.stringify(STATIONS[stationTelecode]) },
         ],
     };
 });
@@ -453,21 +448,17 @@ server.tool('get-tickets', '查询12306余票信息。', {
             ],
         };
     }
-    if (!Object.keys(STATIONS).includes(fromStation) || !Object.keys(STATIONS).includes(toStation)) {
+    if (!Object.keys(STATIONS).includes(fromStation) ||
+        !Object.keys(STATIONS).includes(toStation)) {
         return {
-            content: [
-                {
-                    type: 'text',
-                    text: 'Error: Station not found. ',
-                },
-            ],
+            content: [{ type: 'text', text: 'Error: Station not found. ' }],
         };
     }
     const queryParams = new URLSearchParams({
         'leftTicketDTO.train_date': date,
         'leftTicketDTO.from_station': fromStation,
         'leftTicketDTO.to_station': toStation,
-        'purpose_codes': 'ADULT',
+        purpose_codes: 'ADULT',
     });
     const queryUrl = `${API_BASE}/otn/leftTicket/query`;
     const cookies = await getCookie(API_BASE);
@@ -484,24 +475,22 @@ server.tool('get-tickets', '查询12306余票信息。', {
     const queryResponse = await make12306Request(queryUrl, queryParams, { Cookie: formatCookies(cookies) });
     if (queryResponse === null || queryResponse === undefined) {
         return {
-            content: [
-                {
-                    type: 'text',
-                    text: 'Error: get tickets data failed. ',
-                },
-            ],
+            content: [{ type: 'text', text: 'Error: get tickets data failed. ' }],
         };
     }
     const ticketsData = parseTicketsData(queryResponse.data.result);
-    const ticketsInfo = parseTicketsInfo(ticketsData);
+    let ticketsInfo;
+    try {
+        ticketsInfo = parseTicketsInfo(ticketsData);
+    }
+    catch (error) {
+        return {
+            content: [{ type: 'text', text: 'Error: parse tickets info failed. ' }],
+        };
+    }
     const filteredTicketsInfo = filterTicketsInfo(ticketsInfo, trainFilterFlags);
     return {
-        content: [
-            {
-                type: 'text',
-                text: formatTicketsInfo(filteredTicketsInfo),
-            },
-        ],
+        content: [{ type: 'text', text: formatTicketsInfo(filteredTicketsInfo) }],
     };
 });
 server.tool('get-train-route-stations', '查询列车途径车站信息。', {
@@ -512,46 +501,36 @@ server.tool('get-train-route-stations', '查询列车途径车站信息。', {
     toStationTelecode: z
         .string()
         .describe('到达车站的station_telecode_code，而非城市的station_code.'),
-    departDate: z.string().length(10).describe('列车出发日期( 格式: yyyy-mm-dd )'),
-}, async ({ trainNo: trainNo, fromStationTelecode, toStationTelecode, departDate }) => {
+    departDate: z
+        .string()
+        .length(10)
+        .describe('列车出发日期( 格式: yyyy-mm-dd )'),
+}, async ({ trainNo: trainNo, fromStationTelecode, toStationTelecode, departDate, }) => {
     const queryParams = new URLSearchParams({
-        'train_no': trainNo,
-        'from_station_telecode': fromStationTelecode,
-        'to_station_telecode': toStationTelecode,
-        'depart_date': departDate,
+        train_no: trainNo,
+        from_station_telecode: fromStationTelecode,
+        to_station_telecode: toStationTelecode,
+        depart_date: departDate,
     });
     const queryUrl = `${API_BASE}/otn/czxx/queryByTrainNo`;
     const cookies = await getCookie(API_BASE);
     if (cookies == null) {
         return {
-            content: [
-                {
-                    type: 'text',
-                    text: 'Error: get cookie failed. ',
-                },
-            ],
+            content: [{ type: 'text', text: 'Error: get cookie failed. ' }],
         };
     }
     const queryResponse = await make12306Request(queryUrl, queryParams, { Cookie: formatCookies(cookies) });
     if (queryResponse == null) {
         return {
             content: [
-                {
-                    type: 'text',
-                    text: 'Error: get train route stations failed. ',
-                },
+                { type: 'text', text: 'Error: get train route stations failed. ' },
             ],
         };
     }
     const routeStationsData = parseRouteStationsData(queryResponse.data.data);
     const routeStationsInfo = parseRouteStationsInfo(routeStationsData);
     return {
-        content: [
-            {
-                type: 'text',
-                text: JSON.stringify(routeStationsInfo),
-            },
-        ],
+        content: [{ type: 'text', text: JSON.stringify(routeStationsInfo) }],
     };
 });
 async function getStations() {
@@ -570,6 +549,12 @@ async function getStations() {
     }
     const rawData = eval(stationNameJS.replace('var station_names =', ''));
     const stationsData = parseStationsData(rawData);
+    // 加上缺失的车站信息
+    for (const station of MISSING_STATIONS) {
+        if (!stationsData[station.station_code]) {
+            stationsData[station.station_code] = station;
+        }
+    }
     return stationsData;
 }
 async function init() { }
