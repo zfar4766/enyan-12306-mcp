@@ -530,7 +530,7 @@ server.tool(
       .describe('出发车站的station_code 或 出发城市的station_code'),
     toStation: z
       .string()
-      .describe('到达车站的station_code 或 出发城市的station_code'),
+      .describe('到达车站的station_code 或 到达城市的station_code'),
     trainFilterFlags: z
       .string()
       .regex(/^[GDZTKOFS]*$/)
