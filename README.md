@@ -79,6 +79,16 @@ node ./build/index.js
 ## <div align="center">💭Murmurs</div>
 本项目仅用于学习，欢迎催更。
 
+## <div align="center">🎫Badges</div>
+<div align="center"> 
+<a href="https://glama.ai/mcp/servers/@Joooook/12306-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Joooook/12306-mcp/badge" alt="12306-mcp MCP server" />
+</a>
+
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/joooook-12306-mcp-badge.png)](https://mseep.ai/app/joooook-12306-mcp)
+
+</div>
+
 ## <div align="center">☕️Donate</div>
 请我喝杯奶茶吧。
 <div align="center"> 
