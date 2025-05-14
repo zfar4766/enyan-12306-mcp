@@ -14,10 +14,6 @@ A 12306 ticket search server based on the Model Context Protocol (MCP). The serv
 
 基于 Model Context Protocol (MCP) 的12306购票搜索服务器。提供了简单的API接口，允许大模型利用接口搜索12306购票信息。
 
-<a href="https://glama.ai/mcp/servers/@Joooook/12306-mcp">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Joooook/12306-mcp/badge" alt="12306-mcp MCP server" />
-</a>
-
 ## <div align="center">🚩Features</div>
 <div align="center"> 
 
